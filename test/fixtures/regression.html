@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<!-- Regression + false-positive fixture set for the Magnet2qB scanner. -->
+<html lang="zh-CN"><head><meta charset="utf-8"><title>regression</title></head><body>
+
+<!-- 1. classic magnet anchor (must behave exactly like v2.1: button after the link) -->
+<div id="case-anchor">
+  <p>普通磁力链接：<a href="magnet:?xt=urn:btih:ABCDEF0123456789ABCDEF0123456789ABCDEF01&amp;dn=Example">下载 A</a></p>
+</div>
+
+<!-- 2. magnet as plain text inside a li -->
+<ul id="case-text">
+  <li>magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567 备用</li>
+</ul>
+
+<!-- 3. collection page: three hashes in one container, one duplicated elsewhere -->
+<div id="case-collection">
+  <div><img src="a.jpg" alt="">1111111111111111111111111111111111111111</div>
+  <div><img src="b.jpg" alt="">2222222222222222222222222222222222222222</div>
+  <div><img src="c.jpg" alt="">3333333333333333333333333333333333333333</div>
+</div>
+<p id="case-duplicate">重复引用：1111111111111111111111111111111111111111</p>
+
+<!-- 4. data-attribute carriers -->
+<p id="case-data" data-magnet="magnet:?xt=urn:btih:4444444444444444444444444444444444444444">隐藏磁力（data-magnet）</p>
+<p id="case-datahash" data-infohash="5555555555555555555555555555555555555555">隐藏磁力（data-infohash）</p>
+
+<!-- 5. anchor whose href is a bare hash -->
+<p id="case-hrefhash"><a href="#6666666666666666666666666666666666666666">锚点哈希</a></p>
+
+<!-- 6. base32 infohash (only recognised when the base32 option is on) -->
+<p id="case-base32">base32: MFRGGZDFMZTWQ2LKNNWG23TPOBYXE43U</p>
+
+<!-- 7. FALSE POSITIVES: must never be scanned -->
+<script>var commit = "7777777777777777777777777777777777777777";</script>
+<style>.x{background:url(#8888888888888888888888888888888888888888)}</style>
+<textarea>9999999999999999999999999999999999999999</textarea>
+<pre id="case-code">git show aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</pre>
+
+</body></html>

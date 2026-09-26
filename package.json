@@ -1,0 +1,13 @@
+{
+  "name": "magnet-to-qbittorrent-userscript",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Userscript: recognise magnet links and bare infohashes, send them to qBittorrent with per-domain categories.",
+  "scripts": {
+    "test": "node --check Magnet_to_qBittorrent.js && node --test test/*.test.mjs",
+    "test:only": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

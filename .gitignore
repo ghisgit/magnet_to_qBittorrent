@@ -1,0 +1,20 @@
+# dependencies (the test suite is dependency-free; nothing to install)
+node_modules/
+
+# logs and caches
+*.log
+npm-debug.log*
+.npm/
+.pytest_cache/
+.ruff_cache/
+
+# editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# local scratch
+/tmp/
+*.local.*

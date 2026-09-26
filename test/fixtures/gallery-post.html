@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<!--
+  Structure-preserving fixture for the "gallery post with a bare infohash" layout.
+  Simplified and anonymised: generic host, generic image paths, synthetic hashes.
+
+  The shape it encodes (this is what the scanner has to cope with):
+    * the post body is a PLAIN <div> with no class or id of its own;
+    * it contains only gallery <img> elements followed by a bare 40-char infohash
+      as plain text, with NO surrounding <a href="magnet:..."> anywhere;
+    * another <div> on the page prints the literal string "magnet:?xt=urn:btih:"
+      with an EMPTY hash value, which must not be mistaken for a link.
+-->
+<html lang="zh-CN"><head><meta charset="utf-8"><title>post</title></head><body>
+<div id="page"><div id="main"><div id="content" class="content">
+<div><img decoding="async" loading="lazy" class="alignnone size-full wp-image-103" src="https://example.com/uploads/2024/05/03.jpg" alt="" width="1200" height="900" srcset="https://example.com/uploads/2024/05/03.jpg 1200w, https://example.com/uploads/2024/05/03-300x226.jpg 300w, https://example.com/uploads/2024/05/03-1024x771.jpg 1024w, https://example.com/uploads/2024/05/03-768x578.jpg 768w, https://example.com/uploads/2024/05/03-399x300.jpg 399w" sizes="(max-width: 1200px) 100vw, 1200px" />
+<img decoding="async" loading="lazy" class="alignnone size-full wp-image-102" src="https://example.com/uploads/2024/05/02.jpg" alt="" width="1200" height="900" srcset="https://example.com/uploads/2024/05/02.jpg 1200w, https://example.com/uploads/2024/05/02-300x226.jpg 300w, https://example.com/uploads/2024/05/02-1024x771.jpg 1024w, https://example.com/uploads/2024/05/02-768x578.jpg 768w, https://example.com/uploads/2024/05/02-399x300.jpg 399w" sizes="(max-width: 1200px) 100vw, 1200px" />
+<img decoding="async" loading="lazy" class="alignnone size-full wp-image-101" src="https://example.com/uploads/2024/05/01.jpg" alt="" width="1200" height="900" srcset="https://example.com/uploads/2024/05/01.jpg 1200w, https://example.com/uploads/2024/05/01-300x226.jpg 300w, https://example.com/uploads/2024/05/01-1024x771.jpg 1024w, https://example.com/uploads/2024/05/01-768x578.jpg 768w, https://example.com/uploads/2024/05/01-399x300.jpg 399w" sizes="(max-width: 1200px) 100vw, 1200px" /> 48b2e7c1a728925959a6b7ca51100ba6e2b350de</div>
+<div id="site-generator"><center>magnet:?xt=urn:btih: Powered by ExampleSite &copy; 2011-2018 <a href="#">sitemap</a></center></div>
+</div></div></div>
+<script>var analytics_marker = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";</script>
+<style>.wp-image-101{background:url(#bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb)}</style>
+</body></html>
