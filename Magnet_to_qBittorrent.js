@@ -1,9 +1,13 @@
 // ==UserScript==
 // @name         Magnet to qBittorrent (域名即分类)
-// @namespace    http://tampermonkey.net/
-// @version      3.0.0
+// @namespace    https://github.com/ghisgit/magnet_to_qBittorrent
+// @version      3.0.1
 // @description  识别磁力链接与裸 infohash（40 位 hex / base32），一键发送到 qBittorrent，按域名自动分类；内置现代化设置面板
 // @author       ghisgit
+// @homepageURL  https://github.com/ghisgit/magnet_to_qBittorrent
+// @supportURL   https://github.com/ghisgit/magnet_to_qBittorrent/issues
+// @downloadURL  https://raw.githubusercontent.com/ghisgit/magnet_to_qBittorrent/master/Magnet_to_qBittorrent.js
+// @updateURL    https://raw.githubusercontent.com/ghisgit/magnet_to_qBittorrent/master/Magnet_to_qBittorrent.js
 // @match        *://*/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
@@ -530,7 +534,7 @@
   if (typeof exports !== "undefined" && exports) return;
 
   // ==M2Q-SCANNER-BEGIN==
-  var SCRIPT_VERSION = "3.0.0";
+  var SCRIPT_VERSION = "3.0.1";
   var STORE_KEY = "magnet2qb_settings";
   var UI_ATTR = "data-m2q-ui";
   var LOG_PREFIX = "[Magnet2qB]";

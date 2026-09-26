@@ -3,6 +3,17 @@
 一个 Tampermonkey / Violentmonkey 用户脚本：识别网页里的**磁力链接**与**裸 infohash**，
 一键发送到 qBittorrent，并按**域名自动归类**。
 
+## 一键安装
+
+已安装 [Tampermonkey](https://www.tampermonkey.net/) 或 Violentmonkey 时，直接打开这个链接就会弹出安装页：
+
+**https://raw.githubusercontent.com/ghisgit/magnet_to_qBittorrent/master/Magnet_to_qBittorrent.js**
+
+也可以在脚本管理器里新建脚本，把仓库里的 `Magnet_to_qBittorrent.js` 全文粘贴进去保存。
+脚本带上 `@downloadURL` / `@updateURL`，之后有新版本脚本管理器会提示更新。
+
+> 首次安装后请先打开设置填好 qBittorrent 地址，见下方「首次配置」。
+
 ---
 
 ## 这版修了什么：为什么以前"不会出现按钮"
@@ -171,6 +182,8 @@ test/
 ```
 
 ## 更新日志
+
+**3.0.1** — 补 `@homepageURL` / `@supportURL` / `@downloadURL` / `@updateURL`，支持从本仓库自动更新
 
 **3.0.0**
 - 新增：裸 40 位 hex infohash 识别与 magnet 合成（本次反馈的核心问题）
