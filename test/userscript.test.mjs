@@ -256,3 +256,97 @@ test("rescanning the page never stacks a second button on the same hash", async 
   assert.equal(document.querySelectorAll(".m2q-btn").length, 8, "rescan is idempotent");
   assert.equal(document.querySelector(".m2q-badge").textContent, badge, "badge count is stable");
 });
+
+test("unchecking the batch badge actually removes it, and the choice persists", async () => {
+  const { sandbox, document } = makeSandbox({ html: readFixture("regression.html"), hostname: "example.com" });
+  runUserscript(sandbox);
+  document.dispatchEvent({ type: "DOMContentLoaded" });
+  await settled();
+
+  assert.equal(document.querySelector(".m2q-badge").textContent, "⚡ 8", "badge present while enabled");
+
+  document.querySelector(".m2q-float").click();
+  document.querySelectorAll(".m2q-menu-item")[0].click();
+  document.querySelectorAll(".m2q-tab")[3].click();
+
+  // the toggle row whose label mentions 批量徽标
+  const row = Array.from(document.querySelectorAll(".m2q-toggle")).find((label) => label.textContent.includes("批量徽标"));
+  assert.ok(row, "batch badge toggle exists");
+  const checkbox = row.querySelector('input[type="checkbox"]');
+  assert.equal(checkbox.checked, true, "starts enabled");
+
+  checkbox.checked = false;
+  checkbox.dispatchEvent({ type: "change" });
+
+  assert.equal(document.querySelector(".m2q-badge"), null, "badge disappears immediately when unchecked");
+
+  document.querySelector(".m2q-btn2.is-primary").click();
+  assert.equal(stored(sandbox).batchButton, false, "disabled state was persisted");
+  assert.equal(document.querySelector(".m2q-badge"), null, "still gone after saving");
+
+  // a rescan must not bring it back
+  document.querySelector(".m2q-float").click();
+  Array.from(document.querySelectorAll(".m2q-menu-item")).find((i) => i.textContent.includes("重新扫描")).click();
+  await settled(320);
+  assert.equal(document.querySelector(".m2q-badge"), null, "rescan does not resurrect the badge");
+});
+
+test("cancelling the panel reverts a toggle preview instead of leaving it applied", async () => {
+  const { sandbox, document } = makeSandbox({ html: readFixture("regression.html"), hostname: "example.com" });
+  runUserscript(sandbox);
+  document.dispatchEvent({ type: "DOMContentLoaded" });
+  await settled();
+
+  document.querySelector(".m2q-float").click();
+  document.querySelectorAll(".m2q-menu-item")[0].click();
+  document.querySelectorAll(".m2q-tab")[3].click();
+
+  const row = Array.from(document.querySelectorAll(".m2q-toggle")).find((label) => label.textContent.includes("批量徽标"));
+  const checkbox = row.querySelector('input[type="checkbox"]');
+  checkbox.checked = false;
+  checkbox.dispatchEvent({ type: "change" });
+  assert.equal(document.querySelector(".m2q-badge"), null, "preview hides the badge live");
+
+  // cancel via the footer button
+  const cancel = Array.from(document.querySelectorAll(".m2q-btn2")).find((b) => b.textContent === "取消");
+  cancel.click();
+
+  assert.equal(document.querySelector(".m2q-badge").textContent, "⚡ 8", "badge is back after cancel");
+  assert.equal(stored(sandbox).batchButton, true, "cancel did not persist the change");
+});
+
+test("re-enabling hex detection decorates the hashes again", async () => {
+  const { sandbox, document } = makeSandbox({ html: readFixture("regression.html"), hostname: "example.com" });
+  runUserscript(sandbox);
+  document.dispatchEvent({ type: "DOMContentLoaded" });
+  await settled();
+  assert.equal(document.querySelectorAll(".m2q-btn").length, 8);
+
+  // disable hex40 detection and save
+  document.querySelector(".m2q-float").click();
+  document.querySelectorAll(".m2q-menu-item")[0].click();
+  document.querySelectorAll(".m2q-tab")[3].click();
+  const hexRow = Array.from(document.querySelectorAll(".m2q-toggle")).find((label) => label.textContent.includes("40 位十六进制"));
+  const hexBox = hexRow.querySelector('input[type="checkbox"]');
+  hexBox.checked = false;
+  hexBox.dispatchEvent({ type: "change" });
+  document.querySelector(".m2q-btn2.is-primary").click();
+  assert.equal(stored(sandbox).detectHex40, false);
+
+  await settled(220);
+  const afterDisable = document.querySelectorAll(".m2q-btn").length;
+
+  // turn it back on
+  document.querySelector(".m2q-float").click();
+  document.querySelectorAll(".m2q-menu-item")[0].click();
+  document.querySelectorAll(".m2q-tab")[3].click();
+  const hexRow2 = Array.from(document.querySelectorAll(".m2q-toggle")).find((label) => label.textContent.includes("40 位十六进制"));
+  const hexBox2 = hexRow2.querySelector('input[type="checkbox"]');
+  hexBox2.checked = true;
+  hexBox2.dispatchEvent({ type: "change" });
+  document.querySelector(".m2q-btn2.is-primary").click();
+
+  await settled(320);
+  assert.equal(document.querySelectorAll(".m2q-btn").length, 8, "buttons are restored after re-enabling");
+  assert.ok(afterDisable <= 8, "disabling never increases the button count");
+});

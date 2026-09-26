@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Magnet to qBittorrent (域名即分类)
 // @namespace    https://github.com/ghisgit/magnet_to_qBittorrent
-// @version      3.0.1
+// @version      3.0.2
 // @description  识别磁力链接与裸 infohash（40 位 hex / base32），一键发送到 qBittorrent，按域名自动分类；内置现代化设置面板
 // @author       ghisgit
 // @homepageURL  https://github.com/ghisgit/magnet_to_qBittorrent
@@ -534,7 +534,7 @@
   if (typeof exports !== "undefined" && exports) return;
 
   // ==M2Q-SCANNER-BEGIN==
-  var SCRIPT_VERSION = "3.0.1";
+  var SCRIPT_VERSION = "3.0.2";
   var STORE_KEY = "magnet2qb_settings";
   var UI_ATTR = "data-m2q-ui";
   var LOG_PREFIX = "[Magnet2qB]";
@@ -754,6 +754,16 @@
     layer.host = hostEl;
     runtime.toastRoot = layer;
     return layer;
+  }
+
+  // While the settings panel is open, its draft is the source of truth for anything
+  // that reacts live (badge, floating button), so toggles take effect immediately and
+  // can still be reverted if the user cancels.
+  var activeDraft = null;
+
+  function effectiveSetting(key) {
+    if (activeDraft && Object.prototype.hasOwnProperty.call(activeDraft, key)) return activeDraft[key];
+    return settings[key];
   }
 
   var TOAST_COLORS = { info: "#2563eb", ok: "#16a34a", warn: "#d97706", error: "#dc2626" };
@@ -1014,6 +1024,29 @@
     return settings.buttonStyle === "plain" ? "qB" : "📥 qB";
   }
 
+  // Both of these mean "this spot already carries one of our buttons". They are
+  // checked at collection time and written right after a successful injection, which is
+  // what keeps repeated scans idempotent for the lifetime of the page.
+  var DONE_ATTR = "data-m2q-done";
+
+  function anchorHasButton(node) {
+    if (node.hasAttribute && node.hasAttribute(DONE_ATTR)) return true;
+    var next = node.nextSibling;
+    return !!(next && next.nodeType === 1 && next.classList && next.classList.contains("m2q-chip-wrap"));
+  }
+
+  function nodeHasButton(node) {
+    if (node.hasAttribute && node.hasAttribute(DONE_ATTR)) return true;
+    return !!(node && node.querySelector && node.querySelector(".m2q-btn"));
+  }
+
+  function textNodeHasButton(node) {
+    var parent = node.parentNode;
+    if (!parent) return false;
+    if (parent.hasAttribute && parent.hasAttribute(DONE_ATTR)) return true;
+    return !!(parent.querySelector && parent.querySelector(".m2q-chip-wrap .m2q-btn"));
+  }
+
   function createInlineButton(item) {
     var btn = doc().createElement("button");
     btn.type = "button";
@@ -1095,12 +1128,17 @@
     updateBadge();
   }
 
+  function removeBadge() {
+    if (runtime.badge && runtime.badge.parentNode) runtime.badge.parentNode.removeChild(runtime.badge);
+    runtime.badge = null;
+  }
+
   function updateBadge() {
-    if (!settings.batchButton) return;
     var total = runtime.counts.found;
-    if (total < 2) {
-      if (runtime.badge && runtime.badge.parentNode) runtime.badge.parentNode.removeChild(runtime.badge);
-      runtime.badge = null;
+    // Turning the feature off has to remove a badge that already exists -- returning
+    // early here used to leave it stranded on the page for the rest of the session.
+    if (effectiveSetting("batchButton") === false || total < 2) {
+      removeBadge();
       return;
     }
     if (!runtime.badge) {
@@ -1115,7 +1153,7 @@
     runtime.badge.textContent = "⚡ " + total;
   }
 
-  function collectAnchors() {
+  function collectAnchors(includeDecorated) {
     var seen = Object.create(null);
     var out = [];
     var nodes = doc().querySelectorAll(
@@ -1156,6 +1194,7 @@
         }
       }
       if (!magnet) continue;
+      if (!includeDecorated && anchorHasButton(node)) continue;
       var item = makeMagnetItem(kind, { magnet: magnet, origin: "anchor" });
       if (!item || seen[item.hash]) continue;
       seen[item.hash] = true;
@@ -1164,7 +1203,7 @@
     return out;
   }
 
-  function collectAttrSources() {
+  function collectAttrSources(includeDecorated) {
     var out = [];
     var selectorParts = [];
     for (var i = 0; i < HASH_ATTRS.length; i++) {
@@ -1184,6 +1223,7 @@
         if (found) break;
       }
       if (!found) continue;
+      if (!includeDecorated && (anchorHasButton(node) || nodeHasButton(node))) continue;
       var item = makeMagnetItem("attr", { magnet: found, origin: "attr" });
       if (item) out.push({ item: item, node: node });
     }
@@ -1221,6 +1261,7 @@
           }
         }
         if (!magnet) continue;
+        if (anchorHasButton(node) || nodeHasButton(node)) continue;
         var item = makeMagnetItem(kind, { magnet: magnet, origin: "selector" });
         if (item) out.push({ item: item, node: node });
       }
@@ -1249,6 +1290,12 @@
       if (runtime.pageSeen[item.hash] && !allowDuplicate) return;
       runtime.pageSeen[item.hash] = true;
       jobs.push(entry(item));
+    }
+
+    function markEntry(job) {
+      if (!job || !job.node) return;
+      var target = job.mode === "text" ? job.node.parentNode : job.node;
+      if (target && target.setAttribute) target.setAttribute(DONE_ATTR, "1");
     }
 
     var anchors = collectAnchors();
@@ -1282,6 +1329,7 @@
       walkTextNodes(doc().body, function (textNode) {
         if (!textNode.nodeValue || textNode.nodeValue.length < 32) return;
         if (isExcluded(textNode)) return;
+        if (textNodeHasButton(textNode)) return;
         var textHits = scanHashesInText(textNode.nodeValue, opts);
         for (var h = 0; h < textHits.length; h++) {
           var hit = textHits[h];
@@ -1314,7 +1362,7 @@
       if (job.mode === "text") ok = splitAndInsert(job.node, job.start, job.length, button);
       else ok = anchorButton(job.node, button);
       if (ok) {
-        if (job.mode === "anchor" && job.node.dataset) job.node.dataset.m2qDone = "1";
+        markEntry(job);
         counts.injected++;
       }
     }
@@ -1324,8 +1372,10 @@
 
   function collectPageMagnets() {
     var opts = detectOptions();
-    var anchors = collectAnchors();
-    var attrs = collectAttrSources();
+    // includeDecorated: a page whose magnets all already have buttons must still be
+    // sendable in one go.
+    var anchors = collectAnchors(true);
+    var attrs = collectAttrSources(true);
     var all = [];
     for (var i = 0; i < anchors.length; i++) all.push(anchors[i].item);
     for (var k = 0; k < attrs.length; k++) all.push(attrs[k].item);
@@ -1346,6 +1396,20 @@
   // hashes are never given a second button.
   function rescanPage() {
     return scan();
+  }
+
+  // Detection-affecting settings changed: forget the per-page memory so everything is
+  // reconsidered (e.g. re-enabling 40-hex detection after turning it off must decorate
+  // the same hashes again).
+  function resetPageMemory() {
+    // NOTE: runtime.pageSeen is deliberately NOT cleared. It answers "has this hash
+    // already been given a button on this page", so clearing it would let a second
+    // occurrence of the same hash get decorated after a settings change.
+    runtime.counts.found = 0;
+    runtime.counts.injected = 0;
+    runtime.counts.exchanges = 0;
+    var marked = doc().querySelectorAll("[" + DONE_ATTR + "]");
+    for (var i = 0; i < marked.length; i++) marked[i].removeAttribute(DONE_ATTR);
   }
 
   function sendAllOnPage() {
@@ -1626,7 +1690,7 @@
 
   function applyFloatingVisibility() {
     if (!runtime.floatBtn) return;
-    runtime.floatBtn.style.display = settings.enableFloatingButton ? "" : "none";
+    runtime.floatBtn.style.display = effectiveSetting("enableFloatingButton") !== false ? "" : "none";
   }
 
   function toggleSite() {
@@ -1719,6 +1783,7 @@
       onKey: null,
     };
     runtime.panel = panelState;
+    activeDraft = panelState.values;
 
     var tabDefs = [
       ["conn", "🔌 连接", renderConnTab],
@@ -1911,12 +1976,13 @@
       next.domains = values.hasOwnProperty("rules") ? rulesToString(next.rules) : next.domains;
       settings = next;
       saveSettingsLocal();
+      // Detection rules and domain rules may have changed, so the per-page memory and
+      // counters from the previous configuration are no longer meaningful.
+      resetPageMemory();
       toast("✅ 设置已保存", "ok");
-      closeSettings();
+      closeSettings(true);
       if (settings.autoScan) scheduleScan(60);
-      else if (doc().body) {
-        scan();
-      }
+      else if (doc().body) scan();
       updateFloatButtonState();
       applyFloatingVisibility();
     }
@@ -2220,49 +2286,54 @@
       selectorsArea.value = panelState.values.customSelectors;
       selectorsArea.setAttribute("data-m2q-field", "customSelectors");
 
+      var draft = panelState.values;
+      function setToggle(key, value) {
+        draft[key] = value;
+        if (key === "enableFloatingButton") applyFloatingVisibility();
+        if (key === "batchButton") updateBadge();
+      }
+
       body.appendChild(el("div", { class: "m2q-section", text: "识别开关" }));
       body.appendChild(
-        toggleRow("识别 <a href> 磁力链接", settings.detectMagnet, function (v) {
-          settings.detectMagnet = v;
+        toggleRow("识别 <a href> 磁力链接", draft.detectMagnet, function (v) {
+          setToggle("detectMagnet", v);
         }, "关闭后不再处理页面里现成的 magnet: 链接")
       );
       body.appendChild(
-        toggleRow("识别 40 位十六进制 infohash（推荐）", settings.detectHex40, function (v) {
-          settings.detectHex40 = v;
+        toggleRow("识别 40 位十六进制 infohash（推荐）", draft.detectHex40, function (v) {
+          setToggle("detectHex40", v);
         }, "核心能力：只贴一串 hash、没有 magnet 链接的页面靠它出按钮")
       );
       body.appendChild(
-        toggleRow("识别 32 位 base32 infohash", settings.detectBase32, function (v) {
-          settings.detectBase32 = v;
+        toggleRow("识别 32 位 base32 infohash", draft.detectBase32, function (v) {
+          setToggle("detectBase32", v);
         }, "少数站点使用；误报率略高，默认关闭")
       );
       body.appendChild(
-        toggleRow("把 <a href=\"#hash\"> 当作磁力", settings.detectRawHash, function (v) {
-          settings.detectRawHash = v;
+        toggleRow("把 <a href=\"#hash\"> 当作磁力", draft.detectRawHash, function (v) {
+          setToggle("detectRawHash", v);
         }, "某些站点把 hash 做成页内锚点")
       );
 
       body.appendChild(el("div", { class: "m2q-section", text: "行为与外观" }));
       body.appendChild(
-        toggleRow("显示悬浮齿轮按钮", settings.enableFloatingButton, function (v) {
-          settings.enableFloatingButton = v;
-          applyFloatingVisibility();
+        toggleRow("显示悬浮齿轮按钮", draft.enableFloatingButton, function (v) {
+          setToggle("enableFloatingButton", v);
         })
       );
       body.appendChild(
-        toggleRow("内容变化时自动扫描", settings.autoScan, function (v) {
-          settings.autoScan = v;
+        toggleRow("内容变化时自动扫描", draft.autoScan, function (v) {
+          setToggle("autoScan", v);
         }, "瀑布流/翻页站点建议开启")
       );
       body.appendChild(
-        toggleRow("多于 1 个磁力时显示批量徽标", settings.batchButton, function (v) {
-          settings.batchButton = v;
-          updateBadge();
+        toggleRow("多于 1 个磁力时显示批量徽标", draft.batchButton, function (v) {
+          setToggle("batchButton", v);
         })
       );
       body.appendChild(
-        toggleRow("允许重复添加同一 hash", settings.allowDuplicate, function (v) {
-          settings.allowDuplicate = v;
+        toggleRow("允许重复添加同一 hash", draft.allowDuplicate, function (v) {
+          setToggle("allowDuplicate", v);
         })
       );
 
@@ -2392,12 +2463,17 @@
     });
   }
 
-  function closeSettings() {
+  function closeSettings(saved) {
     var panel = runtime.panel;
     if (!panel) return;
     if (panel.onKey) doc().removeEventListener("keydown", panel.onKey, true);
     if (panel.overlay && panel.overlay.parentNode) panel.overlay.parentNode.removeChild(panel.overlay);
     runtime.panel = null;
+    // Leaving the panel drops the draft: unsaved toggles (float button, batch badge)
+    // have to snap back to the committed settings instead of lingering on the page.
+    activeDraft = null;
+    applyFloatingVisibility();
+    updateBadge();
   }
 
   // ------------------------------------------------------------------- styles
